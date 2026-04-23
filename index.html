@@ -3,28 +3,83 @@
 <head>
   <title>MQTT Web Client</title>
   <style>
-    body { background:#0f172a; color:#e2e8f0; font-family:Arial; padding:20px; }
-    .card { background:#1e293b; padding:15px; border-radius:10px; margin-bottom:15px; }
+    body {
+      background:#0f172a;
+      color:#e2e8f0;
+      font-family:Arial;
+      padding:20px;
+      margin:0;
+    }
+
+    h2 { color:#38bdf8; }
+
+    .card {
+      background:#1e293b;
+      padding:15px;
+      border-radius:10px;
+      margin-bottom:15px;
+    }
+
     input, select {
-      width:100%; padding:8px; margin:5px 0;
-      border:none; border-radius:6px;
-      background:#334155; color:white;
+      width:100%;
+      padding:8px;
+      margin:5px 0;
+      border:none;
+      border-radius:6px;
+      background:#334155;
+      color:white;
     }
+
     button {
-      padding:8px 12px; margin-top:5px;
-      border:none; border-radius:6px;
-      background:#38bdf8; cursor:pointer;
+      padding:8px 12px;
+      margin:5px 5px 0 0;
+      border:none;
+      border-radius:6px;
+      background:#38bdf8;
+      cursor:pointer;
     }
-    .disconnect { background:#ef4444; color:white; }
+
+    .disconnect {
+      background:#ef4444;
+      color:white;
+    }
+
     #output {
-      background:#020617; height:200px;
-      overflow:auto; padding:10px; border-radius:8px;
+      background:#020617;
+      height:150px;
+      overflow:auto;
+      padding:10px;
+      border-radius:8px;
+      font-size:13px;
     }
+
     .connected { color:#22c55e; }
     .disconnected { color:#ef4444; }
+
+    /* FULLSCREEN LOG */
+    #logPage {
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:#020617;
+      display:none;
+      z-index:999;
+    }
+
+    #bigLogs {
+      padding:10px;
+      height:calc(100% - 50px);
+      overflow:auto;
+      font-family:monospace;
+      white-space:pre-wrap;
+    }
   </style>
 </head>
 <body>
+
+<div id="mainUI">
 
 <h2>📡 MQTT Client</h2>
 
@@ -38,14 +93,14 @@
     <option value="ws">WS</option>
   </select>
 
-  <!-- 🔥 NEW -->
-  <input id="path" value="/mqtt" placeholder="WebSocket path (/mqtt or empty)">
+  <input id="path" value="/mqtt" placeholder="WebSocket path">
 
   <input id="username" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
 
   <button onclick="connectMQTT()">Connect</button>
   <button class="disconnect" onclick="disconnectMQTT()">Disconnect</button>
+  <button onclick="toggleLogs()">Full Logs</button>
 
   <p>Status: <span id="status" class="disconnected">Disconnected</span></p>
 </div>
@@ -66,6 +121,17 @@
 <div class="card">
   <h3>Logs</h3>
   <div id="output"></div>
+</div>
+
+</div>
+
+<!-- FULLSCREEN LOG PAGE -->
+<div id="logPage">
+  <div style="padding:10px;">
+    <button onclick="toggleLogs()">⬅ Back</button>
+    <button onclick="clearLogs()">Clear</button>
+  </div>
+  <div id="bigLogs"></div>
 </div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -156,9 +222,33 @@ function publishMessage() {
 }
 
 function log(msg) {
-  const el = document.getElementById("output");
-  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
-  el.scrollTop = el.scrollHeight;
+  const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
+
+  const small = document.getElementById("output");
+  small.innerHTML += entry + "<br>";
+  small.scrollTop = small.scrollHeight;
+
+  const big = document.getElementById("bigLogs");
+  big.innerHTML += entry + "\n";
+  big.scrollTop = big.scrollHeight;
+}
+
+function toggleLogs() {
+  const main = document.getElementById("mainUI");
+  const logs = document.getElementById("logPage");
+
+  if (logs.style.display === "none") {
+    logs.style.display = "block";
+    main.style.display = "none";
+  } else {
+    logs.style.display = "none";
+    main.style.display = "block";
+  }
+}
+
+function clearLogs() {
+  document.getElementById("bigLogs").innerHTML = "";
+  document.getElementById("output").innerHTML = "";
 }
 </script>
 
