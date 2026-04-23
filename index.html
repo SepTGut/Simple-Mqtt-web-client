@@ -3,198 +3,164 @@
 <head>
   <title>MQTT Web Client</title>
   <style>
-    body {
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h2, h3 {
-      color: #38bdf8;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: auto;
-    }
-
-    .card {
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.4);
-    }
-
+    body { background:#0f172a; color:#e2e8f0; font-family:Arial; padding:20px; }
+    .card { background:#1e293b; padding:15px; border-radius:10px; margin-bottom:15px; }
     input, select {
-      width: 100%;
-      padding: 8px;
-      margin: 5px 0 10px 0;
-      border-radius: 6px;
-      border: none;
-      outline: none;
-      background: #334155;
-      color: #e2e8f0;
+      width:100%; padding:8px; margin:5px 0;
+      border:none; border-radius:6px;
+      background:#334155; color:white;
     }
-
     button {
-      padding: 8px 12px;
-      margin-right: 5px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      background: #38bdf8;
-      color: black;
-      font-weight: bold;
+      padding:8px 12px; margin-top:5px;
+      border:none; border-radius:6px;
+      background:#38bdf8; cursor:pointer;
     }
-
-    button:hover {
-      background: #0ea5e9;
-    }
-
-    .disconnect {
-      background: #ef4444;
-      color: white;
-    }
-
-    .disconnect:hover {
-      background: #dc2626;
-    }
-
+    .disconnect { background:#ef4444; color:white; }
     #output {
-      background: #020617;
-      padding: 10px;
-      border-radius: 8px;
-      height: 200px;
-      overflow-y: auto;
-      font-size: 13px;
-      white-space: pre-wrap;
+      background:#020617; height:200px;
+      overflow:auto; padding:10px; border-radius:8px;
     }
-
-    .status {
-      font-weight: bold;
-    }
-
-    .connected { color: #22c55e; }
-    .disconnected { color: #ef4444; }
+    .connected { color:#22c55e; }
+    .disconnected { color:#ef4444; }
   </style>
 </head>
 <body>
-<div class="container">
 
-  <h2>📡 MQTT Web Client</h2>
+<h2>📡 MQTT Client</h2>
 
-  <div class="card">
-    <h3>Connection</h3>
-    <input id="host" value="test.mosquitto.org">
-    <input id="port" value="8081">
-    <select id="protocol">
-      <option value="wss">WSS (secure)</option>
-      <option value="ws">WS</option>
-    </select>
-    <input id="username" placeholder="Username (optional)">
-    <input id="password" type="password" placeholder="Password (optional)">
+<div class="card">
+  <h3>Connection</h3>
+  <input id="host" value="broker.hivemq.com">
+  <input id="port" value="8884">
 
-    <button onclick="connectMQTT()">Connect</button>
-    <button class="disconnect" onclick="disconnectMQTT()">Disconnect</button>
+  <select id="protocol">
+    <option value="wss">WSS</option>
+    <option value="ws">WS</option>
+  </select>
 
-    <p>Status: <span id="status" class="status disconnected">Disconnected</span></p>
-  </div>
+  <!-- 🔥 NEW -->
+  <input id="path" value="/mqtt" placeholder="WebSocket path (/mqtt or empty)">
 
-  <div class="card">
-    <h3>Subscribe</h3>
-    <input id="topic" value="test/topic">
-    <button onclick="subscribeTopic()">Subscribe</button>
-  </div>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
 
-  <div class="card">
-    <h3>Publish</h3>
-    <input id="pubTopic" value="test/topic">
-    <input id="message" placeholder="Message">
-    <button onclick="publishMessage()">Send</button>
-  </div>
+  <button onclick="connectMQTT()">Connect</button>
+  <button class="disconnect" onclick="disconnectMQTT()">Disconnect</button>
 
-  <div class="card">
-    <h3>Logs</h3>
-    <div id="output"></div>
-  </div>
+  <p>Status: <span id="status" class="disconnected">Disconnected</span></p>
+</div>
 
+<div class="card">
+  <h3>Subscribe (comma separated)</h3>
+  <input id="topic" value="test/topic">
+  <button onclick="subscribeTopic()">Subscribe</button>
+</div>
+
+<div class="card">
+  <h3>Publish</h3>
+  <input id="pubTopic" value="test/topic">
+  <input id="message" placeholder="Message">
+  <button onclick="publishMessage()">Send</button>
+</div>
+
+<div class="card">
+  <h3>Logs</h3>
+  <div id="output"></div>
 </div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
-  let client;
+let client;
 
-  function setStatus(text, isConnected) {
-    const el = document.getElementById("status");
-    el.textContent = text;
-    el.className = "status " + (isConnected ? "connected" : "disconnected");
+function setStatus(text, ok) {
+  const el = document.getElementById("status");
+  el.textContent = text;
+  el.className = ok ? "connected" : "disconnected";
+}
+
+function connectMQTT() {
+  const host = document.getElementById("host").value.trim();
+  const port = document.getElementById("port").value.trim();
+  const protocol = document.getElementById("protocol").value;
+  const path = document.getElementById("path").value.trim();
+
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  let url = `${protocol}://${host}:${port}`;
+  if (path) url += path;
+
+  log("Connecting → " + url);
+
+  client = mqtt.connect(url, {
+    username: username || undefined,
+    password: password || undefined,
+    reconnectPeriod: 2000
+  });
+
+  client.on("connect", () => {
+    setStatus("Connected", true);
+    log("✅ Connected");
+  });
+
+  client.on("reconnect", () => log("🔄 Reconnecting..."));
+
+  client.on("message", (topic, message) => {
+    log(`📩 [${topic}] → ${message.toString()}`);
+  });
+
+  client.on("error", (err) => {
+    log("❌ " + err.message);
+  });
+
+  client.on("close", () => {
+    setStatus("Disconnected", false);
+    log("⚠️ Disconnected");
+  });
+}
+
+function disconnectMQTT() {
+  if (client) client.end();
+}
+
+function subscribeTopic() {
+  if (!client || !client.connected) {
+    log("❌ Not connected");
+    return;
   }
 
-  function connectMQTT() {
-    const host = document.getElementById("host").value;
-    const port = document.getElementById("port").value;
-    const protocol = document.getElementById("protocol").value;
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+  const topics = document.getElementById("topic").value
+    .split(",")
+    .map(t => t.trim())
+    .filter(t => t);
 
-    const url = protocol + "://" + host + ":" + port;
-
-    log("Connecting to " + url);
-
-    client = mqtt.connect(url, {
-      username: username || undefined,
-      password: password || undefined
+  topics.forEach(t => {
+    client.subscribe(t, err => {
+      if (err) log("❌ Failed: " + t);
+      else log("📡 Subscribed: " + t);
     });
+  });
+}
 
-    client.on("connect", () => {
-      setStatus("Connected", true);
-      log("✅ Connected");
-    });
-
-    client.on("message", (topic, message) => {
-      log("📩 " + topic + " → " + message.toString());
-    });
-
-    client.on("error", (err) => {
-      log("❌ Error: " + err);
-    });
-
-    client.on("close", () => {
-      setStatus("Disconnected", false);
-      log("⚠️ Disconnected");
-    });
+function publishMessage() {
+  if (!client || !client.connected) {
+    log("❌ Not connected");
+    return;
   }
 
-  function disconnectMQTT() {
-    if (client) client.end();
-  }
+  const topic = document.getElementById("pubTopic").value;
+  const msg = document.getElementById("message").value;
 
-  function subscribeTopic() {
-    const topic = document.getElementById("topic").value;
-    if (client) {
-      client.subscribe(topic);
-      log("📡 Subscribed to: " + topic);
-    }
-  }
+  client.publish(topic, msg);
+  log(`📤 Sent: [${topic}] → ${msg}`);
+}
 
-  function publishMessage() {
-    const topic = document.getElementById("pubTopic").value;
-    const msg = document.getElementById("message").value;
-
-    if (client) {
-      client.publish(topic, msg);
-      log("📤 Sent: " + topic + " → " + msg);
-    }
-  }
-
-  function log(msg) {
-    const output = document.getElementById("output");
-    output.innerHTML += msg + "<br>";
-    output.scrollTop = output.scrollHeight;
-  }
+function log(msg) {
+  const el = document.getElementById("output");
+  el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
+}
 </script>
+
 </body>
 </html>
